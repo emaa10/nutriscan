@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="NutriScan">
+    <title>NutriScan - Nährwert Analyzer</title>
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%234CAF50' width='100' height='100' rx='20'/><text x='50' y='70' font-size='60' text-anchor='middle' fill='white'>🥗</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --primary: #4CAF50;
+            --primary-dark: #388E3C;
+            --secondary: #FF9800;
+            --bg: #f5f5f5;
+            --card-bg: #ffffff;
+            --text: #212121;
+            --text-light: #757575;
+            --shadow: 0 4px 12px rgba(0,0,0,0.1);
+            --radius: 16px;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px 0 30px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            margin: -20px -20px 20px -20px;
+            color: white;
+            border-radius: 0 0 30px 30px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .camera-section {
+            text-align: center;
+        }
+
+        .preview-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 4/3;
+            background: #f0f0f0;
+            border-radius: var(--radius);
+            overflow: hidden;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #preview {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+
+        .preview-placeholder {
+            text-align: center;
+            color: var(--text-light);
+        }
+
+        .preview-placeholder svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 10px;
+            opacity: 0.5;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        textarea {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 16px;
+            margin-bottom: 12px;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+
+        input:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Loading Animation */
+        .loading-container {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .loader {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 20px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Results */
+        .results-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .food-name {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+
+        .portion-info {
+            color: var(--text-light);
+            font-size: 14px;
+        }
+
+        .nutrition-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin: 20px 0;
+        }
+
+        .nutrition-item {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 16px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .nutrition-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--primary);
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .nutrition-label {
+            font-size: 12px;
+            color: var(--text-light);
+            font-weight: 500;
+        }
+
+        .ingredients {
+            margin-top: 20px;
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+
+        .ingredients h3 {
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: var(--text);
+        }
+
+        .ingredients-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .ingredient-tag {
+            background: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            color: var(--text);
+            border: 1px solid #e0e0e0;
+        }
+
+        .adjust-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px dashed #e0e0e0;
+        }
+
+        .adjust-section h3 {
+            font-size: 16px;
+            margin-bottom: 15px;
+            color: var(--text);
+        }
+
+        .input-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            color: var(--text-light);
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        /* Fade in animation */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeInUp 0.5s ease;
+        }
+
+        .confidence-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        .confidence-high {
+            background: #E8F5E9;
+            color: #2E7D32;
+        }
+
+        .confidence-medium {
+            background: #FFF3E0;
+            color: #E65100;
+        }
+
+        .confidence-low {
+            background: #FFEBEE;
+            color: #C62828;
+        }
+
+        #cameraInput,
+        #fileInput {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🥗 NutriScan</h1>
+            <p>Nährwerte per Foto analysieren</p>
+        </div>
+
+        <!-- Token Warning -->
+        {% if not has_api_key %}
+        <div class="card" style="background: #FFF3CD; border-left: 4px solid #FFC107; margin-bottom: 20px;">
+            <h3 style="color: #856404; margin-bottom: 10px;">⚠️ Kein API Token gefunden</h3>
+            <p style="color: #856404; font-size: 14px; margin-bottom: 10px;">
+                Um NutriScan zu nutzen, benötigst du einen OpenAI API Key.
+            </p>
+            <p style="color: #856404; font-size: 14px; margin-bottom: 10px;">
+                Füge ihn zur URL hinzu:<br>
+                <code style="background: white; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 5px;">
+                    ?token=sk-dein-openai-key
+                </code>
+            </p>
+            <a href="https://platform.openai.com/api-keys" target="_blank" 
+               style="color: #856404; text-decoration: underline; font-size: 14px;">
+                → OpenAI API Key erstellen
+            </a>
+        </div>
+        {% endif %}
+
+        <!-- Upload Section -->
+        <div id="uploadSection" class="card">
+            <div class="camera-section">
+                <div class="preview-container">
+                    <img id="preview" alt="Vorschau">
+                    <div class="preview-placeholder">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                        <p>Kein Foto ausgewählt</p>
+                    </div>
+                </div>
+
+                <input type="file" id="cameraInput" accept="image/*" capture="environment">
+                <input type="file" id="fileInput" accept="image/*">
+                
+                <button class="btn btn-primary" onclick="document.getElementById('cameraInput').click()">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    Foto aufnehmen
+                </button>
+                
+                <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    Foto hochladen
+                </button>
+
+                <textarea id="description" placeholder="Optionale Beschreibung (z.B. 'Spaghetti Carbonara', 'Apfel')"></textarea>
+
+                <button id="analyzeBtn" class="btn btn-primary" onclick="analyzeImage()" disabled>
+                    ✨ Analysieren
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading Section -->
+        <div id="loadingSection" class="card hidden">
+            <div class="loading-container">
+                <div class="loader"></div>
+                <h3>Analysiere Nährwerte...</h3>
+                <p style="color: var(--text-light); margin-top: 10px;">Dies kann einen Moment dauern</p>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div id="resultsSection" class="card hidden">
+            <div class="results-header">
+                <h2 class="food-name" id="foodName"></h2>
+                <p class="portion-info" id="portionInfo"></p>
+                <span class="confidence-badge" id="confidenceBadge"></span>
+            </div>
+
+            <div class="nutrition-grid">
+                <div class="nutrition-item">
+                    <span class="nutrition-value" id="calories">-</span>
+                    <span class="nutrition-label">Kalorien (kcal)</span>
+                </div>
+                <div class="nutrition-item">
+                    <span class="nutrition-value" id="protein">-</span>
+                    <span class="nutrition-label">Protein (g)</span>
+                </div>
+                <div class="nutrition-item">
+                    <span class="nutrition-value" id="carbs">-</span>
+                    <span class="nutrition-label">Kohlenhydrate (g)</span>
+                </div>
+                <div class="nutrition-item">
+                    <span class="nutrition-value" id="fat">-</span>
+                    <span class="nutrition-label">Fett (g)</span>
+                </div>
+                <div class="nutrition-item">
+                    <span class="nutrition-value" id="fiber">-</span>
+                    <span class="nutrition-label">Ballaststoffe (g)</span>
+                </div>
+                <div class="nutrition-item">
+                    <span class="nutrition-value" id="sugar">-</span>
+                    <span class="nutrition-label">Zucker (g)</span>
+                </div>
+            </div>
+
+            <div class="ingredients" id="ingredientsSection">
+                <h3>Hauptzutaten</h3>
+                <div class="ingredients-list" id="ingredientsList"></div>
+            </div>
+
+            <div class="adjust-section">
+                <h3>📊 Portion anpassen</h3>
+                <div class="input-group">
+                    <div>
+                        <label for="portionSize">Portionsgröße</label>
+                        <input type="text" id="portionSize" placeholder="z.B. '1 Teller'">
+                    </div>
+                    <div>
+                        <label for="portionWeight">Gewicht (g)</label>
+                        <input type="number" id="portionWeight" placeholder="z.B. 250">
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="recalculate()">
+                    🔄 Neu berechnen
+                </button>
+            </div>
+
+            <button class="btn btn-secondary" onclick="reset()" style="margin-top: 20px;">
+                ← Neue Analyse
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let currentImage = null;
+        let originalData = null;
+
+        // Image Preview Handler
+        function handleImageSelect(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                currentImage = e.target.result;
+                const preview = document.getElementById('preview');
+                preview.src = currentImage;
+                preview.style.display = 'block';
+                preview.parentElement.querySelector('.preview-placeholder').style.display = 'none';
+                document.getElementById('analyzeBtn').disabled = false;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        document.getElementById('cameraInput').addEventListener('change', function() {
+            handleImageSelect(this);
+        });
+
+        document.getElementById('fileInput').addEventListener('change', function() {
+            handleImageSelect(this);
+        });
+
+        async function analyzeImage() {
+            if (!currentImage) {
+                alert('Bitte wähle zuerst ein Foto aus!');
+                return;
+            }
+
+            // Show loading
+            document.getElementById('uploadSection').classList.add('hidden');
+            document.getElementById('loadingSection').classList.remove('hidden');
+
+            try {
+                const description = document.getElementById('description').value;
+                
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        image: currentImage,
+                        description: description
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    // Spezielle Fehlerbehandlung
+                    if (response.status === 429) {
+                        alert(`⏳ Rate Limit erreicht!\n\nBitte warte noch ${data.retry_after} Sekunden vor der nächsten Analyse.`);
+                    } else if (response.status === 401) {
+                        alert(`🔐 ${data.error}\n\n${data.message}\n\nBitte füge deinen OpenAI API Key zur URL hinzu:\n?token=sk-dein-key`);
+                    } else {
+                        alert('Fehler bei der Analyse: ' + (data.message || data.error));
+                    }
+                    reset();
+                    return;
+                }
+
+                originalData = data;
+                displayResults(data);
+
+            } catch (error) {
+                alert('Fehler bei der Analyse: ' + error.message);
+                reset();
+            }
+        }
+
+        function displayResults(data) {
+            document.getElementById('loadingSection').classList.add('hidden');
+            document.getElementById('resultsSection').classList.remove('hidden');
+            document.getElementById('resultsSection').classList.add('fade-in');
+
+            // Header
+            document.getElementById('foodName').textContent = data.food_name;
+            document.getElementById('portionInfo').textContent = 
+                `${data.estimated_portion} (ca. ${data.estimated_weight_g}g)`;
+
+            // Confidence Badge
+            const badge = document.getElementById('confidenceBadge');
+            const confidence = data.confidence || 'mittel';
+            badge.textContent = `Konfidenz: ${confidence}`;
+            badge.className = 'confidence-badge confidence-' + confidence;
+
+            // Nutrition values
+            const nutrition = data.nutrition;
+            document.getElementById('calories').textContent = nutrition.calories;
+            document.getElementById('protein').textContent = nutrition.protein;
+            document.getElementById('carbs').textContent = nutrition.carbs;
+            document.getElementById('fat').textContent = nutrition.fat;
+            document.getElementById('fiber').textContent = nutrition.fiber;
+            document.getElementById('sugar').textContent = nutrition.sugar;
+
+            // Ingredients
+            const ingredientsList = document.getElementById('ingredientsList');
+            ingredientsList.innerHTML = '';
+            if (data.ingredients && data.ingredients.length > 0) {
+                data.ingredients.forEach(ingredient => {
+                    const tag = document.createElement('span');
+                    tag.className = 'ingredient-tag';
+                    tag.textContent = ingredient;
+                    ingredientsList.appendChild(tag);
+                });
+            }
+
+            // Set current values in adjust fields
+            document.getElementById('portionSize').value = data.estimated_portion;
+            document.getElementById('portionWeight').value = data.estimated_weight_g;
+        }
+
+        async function recalculate() {
+            const portionSize = document.getElementById('portionSize').value;
+            const portionWeight = document.getElementById('portionWeight').value;
+
+            if (!portionWeight) {
+                alert('Bitte gib ein Gewicht ein!');
+                return;
+            }
+
+            try {
+                const response = await fetch('/recalculate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        originalData: originalData,
+                        portionSize: portionSize,
+                        portionWeight: portionWeight
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Neuberechnung fehlgeschlagen');
+                }
+
+                const data = await response.json();
+                originalData = data;
+                displayResults(data);
+
+            } catch (error) {
+                alert('Fehler bei der Neuberechnung: ' + error.message);
+            }
+        }
+
+        function reset() {
+            document.getElementById('resultsSection').classList.add('hidden');
+            document.getElementById('loadingSection').classList.add('hidden');
+            document.getElementById('uploadSection').classList.remove('hidden');
+            
+            currentImage = null;
+            originalData = null;
+            document.getElementById('preview').style.display = 'none';
+            document.getElementById('preview').parentElement.querySelector('.preview-placeholder').style.display = 'flex';
+            document.getElementById('analyzeBtn').disabled = true;
+            document.getElementById('description').value = '';
+            document.getElementById('cameraInput').value = '';
+            document.getElementById('fileInput').value = '';
+        }
+    </script>
+</body>
+</html>
